@@ -60,7 +60,15 @@ Respond with ONLY a single JSON object, no prose, no markdown fences, in exactly
 
 export async function classifyProblemTags(problem: string): Promise<SemanticClassification | null> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return null;
+  if (!apiKey) {
+    // Logged deliberately (not just a silent null) -- otherwise "key never
+    // configured" and "key configured but the API call failed" are
+    // indistinguishable from server logs alone, which is exactly the kind
+    // of debugging dead-end that makes a wrong Vercel env var scope
+    // (Production vs. Preview) hard to diagnose from the outside.
+    console.error('[semanticClassifier] ANTHROPIC_API_KEY is not set in this environment -- falling back to keyword matching. If you configured it in Vercel, check it is enabled for the environment (Production/Preview/Development) this deployment is actually running in.');
+    return null;
+  }
 
   const model = process.env.ANTHROPIC_CLASSIFIER_MODEL || DEFAULT_MODEL;
 
