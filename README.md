@@ -262,6 +262,82 @@ sentence (`buildFallbackRationale()` in `lib/matching.ts`) built only from
 that vendor's own real tags, so a top card is never left without an
 explanation.
 
+## Anonymous demand analytics + admin dashboard
+
+Every completed match request is logged to a `demand_signals` table for
+aggregate demand analysis -- **with zero PII fields, confirmed**: the schema
+(`db/schema.sql`) stores only `raw_problem_text`, `detected_domains`,
+`assigned_cluster_id`, `company_size`, `complexity_tolerance`, `industry`,
+and `matched_vendors` (vendor *names*, never anything about the person
+asking). No name, email, IP address, user agent, or session/device
+identifier is captured or stored anywhere in this pipeline
+(`lib/demandSignals.ts`, `app/api/match/route.ts`) -- the only caveat, true
+of any free-text field, is that if someone voluntarily types identifying
+information into their own problem description, that text is stored
+verbatim, the same as any support-ticket or search-log system; the schema
+adds no field designed to capture or infer identity.
+
+**Three-level taxonomy:**
+1. **Domain** (fixed) -- the existing ~20 `TAG_GROUPS` labels already used
+   for matching, detected from the same relevance scores computed for that
+   query (real classification in `llm-semantic` mode, the same bag-of-words
+   `tagOverlap()` scoring in `keyword-fallback` mode) -- never a second,
+   redundant classification call. See `detectDomains()` in `lib/matching.ts`.
+2. **Cluster** (dynamic) -- auto-discovered sub-groupings within a domain,
+   stored in the `clusters` table with a `pending`/`approved`/`rejected`
+   status. Never auto-published: a cluster only affects future matching
+   once an admin approves it.
+3. **Request** -- the raw `demand_signals` row itself, shown under its
+   assigned cluster in the Request Explorer.
+
+**Auto-clustering** (`lib/clustering.ts`, triggered daily by Vercel Cron --
+see `vercel.json` and `app/api/cron/cluster/route.ts`): for each domain with
+unclustered rows, one Claude call tries to assign them to existing
+*approved* clusters; rows that don't match accumulate, and once 10 or more
+in the same domain show a coherent shared pattern (judged by Claude, not
+just the count), a new cluster is proposed with `status='pending'` for a
+human to review. The `/api/cron/cluster` endpoint is protected by
+`CRON_SECRET` (Vercel automatically sends it as a Bearer token to cron
+paths) and fails closed -- refuses to run at all if the secret isn't
+configured.
+
+**Admin dashboard** (`/admin`) -- **auth-protected, confirmed**:
+`middleware.ts` gates every `/admin/*` page and `/api/admin/*` route behind
+a signed, expiring session cookie (`lib/adminAuth.ts`), checked live:
+unauthenticated access to `/admin` redirects to `/admin/login` (307), to any
+`/api/admin/*` route returns 401, and a tampered cookie is rejected the same
+as a missing one. Login is a single shared password (`ADMIN_PASSWORD` env
+var) -- deliberately simple, not a real user-account system, per the
+product's current scale. Three views: **Overview** (total requests,
+date-range filterable, requests-over-time chart, domain breakdown),
+**Request Explorer** (filterable/searchable table over every logged
+request, CSV export), and **Cluster Management** (approved clusters per
+domain with request counts + growth sparklines; a pending-clusters section
+with approve/rename/merge/reject actions -- approving immediately assigns
+the requests that justified the proposal, rather than waiting for the next
+cron run to rediscover them).
+
+### Setup
+
+Three new env vars, all optional individually -- the app works with none of
+them set (analytics logging and the dashboard simply stay off; matching
+itself is unaffected):
+
+```
+DATABASE_URL=postgres://...       # any Postgres (Vercel Postgres, Neon, Supabase, ...)
+CRON_SECRET=<random string>       # Vercel sends this automatically as a Bearer token to cron paths once set
+ADMIN_PASSWORD=<a real password>  # gates /admin entirely; without it, /admin/login always rejects
+```
+
+1. Provision a Postgres database (Vercel: Project → Storage → add a Postgres
+   integration, which auto-populates `DATABASE_URL`; any other provider
+   works too, just set `DATABASE_URL` manually).
+2. Run the schema migration once: `DATABASE_URL=... npx tsx scripts/migrate.ts`
+   (idempotent -- safe to re-run; `db/schema.sql` is the single source of
+   truth, no migration-chain framework).
+3. Set `CRON_SECRET` and `ADMIN_PASSWORD` in Vercel's environment variables,
+   redeploy.
+
 ## Trademarks
 
 Galymer is an independent product. It is not affiliated with, sponsored by,

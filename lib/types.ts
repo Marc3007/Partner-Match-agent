@@ -165,4 +165,12 @@ export interface MatchResponse {
    * instead. The UI must never call the fallback "semantic" or "AI-powered."
    */
   matchingMode: 'llm-semantic' | 'keyword-fallback';
+  /**
+   * Level-1 "domain" classification for anonymous demand-signal logging
+   * (see db/schema.sql) -- the tag taxonomy's existing ~20 TAG_GROUPS
+   * labels, most relevant first, derived from the same relevance scores
+   * already computed for matching (never a second classification call).
+   * Empty when nothing cleared the detection threshold.
+   */
+  detectedDomains: string[];
 }

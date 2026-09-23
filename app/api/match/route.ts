@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { runMatch } from '@/lib/matching';
+import { logDemandSignal } from '@/lib/demandSignals';
 import type { CompanySize, ComplexityLevel, Ecosystem, MatchRequest } from '@/lib/types';
 
 const VALID_SIZES: CompanySize[] = ['startup', 'mid_market', 'enterprise'];
@@ -28,5 +29,6 @@ export async function POST(request: NextRequest) {
   };
 
   const result = await runMatch(req, selectedTagIds);
+  await logDemandSignal(req, result);
   return NextResponse.json(result);
 }

@@ -1,4 +1,4 @@
-import { ALL_TAGS, TAG_BY_ID } from './tags';
+import { ALL_TAGS, TAG_BY_ID, TAG_GROUPS } from './tags';
 import type {
   CompanySize,
   ComplexityLevel,
@@ -215,6 +215,35 @@ function semanticMatch(
   return Math.min(1, best * 0.75 + second * 0.25);
 }
 
+const DOMAIN_DETECTION_THRESHOLD = 0.3;
+const MAX_DETECTED_DOMAINS = 3;
+
+/**
+ * Level-1 "domain" for the anonymous demand-signal log (see db/schema.sql):
+ * the ~20 TAG_GROUPS labels already used to organize the tag taxonomy, not
+ * a separate classification system. Reuses whatever tag-relevance signal
+ * the query already produced (the real Claude classification scores in
+ * llm-semantic mode, or the same tagOverlap() bag-of-words scoring used for
+ * matching in keyword-fallback mode) rather than a second, redundant call --
+ * a domain is "detected" when the best tag within it clears a real
+ * relevance bar, independent of whether any vendor happened to be enriched
+ * for that tag.
+ */
+function detectDomains(inputTokens: Set<string>, selectedTagIds: Set<string>, llmScores: Map<string, number> | null): string[] {
+  const groupScores: [string, number][] = TAG_GROUPS.map((group) => {
+    const best = Math.max(
+      0,
+      ...group.tags.map((tag) => (llmScores ? llmScores.get(tag.id) ?? 0 : tagOverlap(tag.id, inputTokens, selectedTagIds)))
+    );
+    return [group.label, best];
+  });
+  return groupScores
+    .filter(([, score]) => score >= DOMAIN_DETECTION_THRESHOLD)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, MAX_DETECTED_DOMAINS)
+    .map(([label]) => label);
+}
+
 const COMPLEXITY_RANK: Record<ComplexityLevel, number> = { low: 0, medium: 1, high: 2 };
 
 function complexityFit(vendor: Vendor, tolerance: ComplexityLevel): number {
@@ -362,6 +391,7 @@ export async function runMatch(req: MatchRequest, selectedTagIds: string[] = [])
   });
   const llmScores = classification?.scores ?? null;
   const matchingMode: MatchResponse['matchingMode'] = classification ? 'llm-semantic' : 'keyword-fallback';
+  const detectedDomains = detectDomains(inputTokens, selected, llmScores);
 
   const results = enrichedVendors
     .map((v) => scoreVendor(v, req, inputTokens, selected, llmScores))
@@ -479,6 +509,7 @@ export async function runMatch(req: MatchRequest, selectedTagIds: string[] = [])
     belowConfidence,
     coverageGap,
     matchingMode,
+    detectedDomains,
   };
 }
 

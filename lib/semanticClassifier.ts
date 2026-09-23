@@ -45,7 +45,7 @@ const DEFAULT_MODEL = 'claude-haiku-4-5-20251001';
  * object the caller parses itself) or null on any failure -- callers must
  * treat null as "fall back," never as "empty but valid."
  */
-async function callClaudeForText(prompt: string, maxTokens: number, logPrefix: string): Promise<string | null> {
+export async function callClaudeForText(prompt: string, maxTokens: number, logPrefix: string): Promise<string | null> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     console.error(`[${logPrefix}] ANTHROPIC_API_KEY is not set in this environment -- falling back. If you configured it in Vercel, check it is enabled for the environment (Production/Preview/Development) this deployment is actually running in.`);
@@ -89,7 +89,7 @@ async function callClaudeForText(prompt: string, maxTokens: number, logPrefix: s
   }
 }
 
-function extractJsonObject(text: string, logPrefix: string): Record<string, unknown> | null {
+export function extractJsonObject(text: string, logPrefix: string): Record<string, unknown> | null {
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) {
     console.error(`[${logPrefix}] no JSON object found in response text:`, text.slice(0, 300));
