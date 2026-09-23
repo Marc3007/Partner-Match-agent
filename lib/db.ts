@@ -21,7 +21,19 @@ export function getPool(): Pool | null {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) return null;
   if (!pool) {
-    pool = new Pool({ connectionString, max: 1, idleTimeoutMillis: 10_000 });
+    // Managed providers (Supabase, Neon, Vercel Postgres, RDS, ...) require
+    // TLS; local dev doesn't offer it at all. `rejectUnauthorized: false`
+    // is the standard pragmatic setting these providers' own docs recommend
+    // for `pg` -- the connection is still encrypted, just not validated
+    // against a full CA chain, which is the right tradeoff for a managed
+    // provider's own endpoint (not an arbitrary host).
+    const isLocal = /localhost|127\.0\.0\.1/.test(connectionString);
+    pool = new Pool({
+      connectionString,
+      max: 1,
+      idleTimeoutMillis: 10_000,
+      ssl: isLocal ? undefined : { rejectUnauthorized: false },
+    });
   }
   return pool;
 }

@@ -7,15 +7,14 @@
  */
 import { readFileSync } from 'fs';
 import path from 'path';
-import { Pool } from 'pg';
+import { getPool } from '../lib/db';
 
 async function main() {
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) {
+  const pool = getPool();
+  if (!pool) {
     console.error('DATABASE_URL is not set. Point it at any Postgres instance (Vercel Postgres, Neon, Supabase, local, ...).');
     process.exit(1);
   }
-  const pool = new Pool({ connectionString });
   const sql = readFileSync(path.join(__dirname, '..', 'db', 'schema.sql'), 'utf8');
   try {
     await pool.query(sql);
