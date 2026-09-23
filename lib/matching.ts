@@ -11,7 +11,7 @@ import type {
   Vendor,
 } from './types';
 import { VENDORS } from './vendors';
-import { classifyProblemTags } from './semanticClassifier';
+import { classifyProblemTags, generateMatchRationales } from './semanticClassifier';
 
 /**
  * Deliberately conservative light stemmer: strips gerund/past-tense/plural
@@ -287,6 +287,7 @@ function scoreVendor(
     factorAvailability: { companySizeFit: sizeFit.available, ecosystemSynergyBonus: ecoFit.available },
     ecosystemBonusApplied: factors.ecosystemSynergyBonus > 0,
     reason: '', // filled in for alternatives once the top picks' categories are known (see buildReason)
+    matchRationale: null, // filled in for top picks only, after ranking is final (see runMatch)
   };
 }
 
@@ -326,6 +327,22 @@ function buildReason(factors: MatchFactorBreakdown, vendor: Vendor, topCategorie
       : `A relevant partner, but no vendor scored high enough on problem fit for a confident top pick this time.`;
   }
   return hasTop ? `Solid fit, but scored just behind the top picks overall.` : `A relevant partner for this problem, just below our confidence bar for a top pick.`;
+}
+
+/**
+ * Deterministic, tag-based "why this fits" sentence -- the honest fallback
+ * when generateMatchRationales() is unavailable (no API key, or the call
+ * itself failed) or didn't return an entry for this specific vendor. Built
+ * only from the vendor's own real problemTags, never fabricated, so it's
+ * always defensible even though it's plainer than the LLM-generated one.
+ */
+function buildFallbackRationale(vendor: Vendor): string {
+  const labels = vendor.problemTags.map((t) => TAG_BY_ID[t]?.label).filter((l): l is string => Boolean(l));
+  if (labels.length === 0) return `${vendor.name} is categorized under ${vendor.category}.`;
+  if (labels.length === 1) return `${vendor.name} specializes in ${labels[0].toLowerCase()}.`;
+  const last = labels[labels.length - 1].toLowerCase();
+  const rest = labels.slice(0, -1).map((l) => l.toLowerCase()).join(', ');
+  return `${vendor.name} covers ${rest} and ${last}, within ${vendor.category}.`;
 }
 
 export async function runMatch(req: MatchRequest, selectedTagIds: string[] = []): Promise<MatchResponse> {
@@ -379,6 +396,33 @@ export async function runMatch(req: MatchRequest, selectedTagIds: string[] = [])
   // contradiction as showing one company as both recommended and not.
   const stack = buildStackRecommendation(top);
 
+  // One-sentence "why this fits" per top pick, generated AFTER ranking is
+  // final (context only -- see the field's own doc comment in lib/types.ts
+  // for why this can never feed back into scoring). Batched into a single
+  // call for all top picks rather than one call per vendor. Only attempted
+  // in llm-semantic mode: the keyword-fallback path has no grounded way to
+  // explain "why," and pretending otherwise would be exactly the kind of
+  // unearned confidence this project has repeatedly had to walk back.
+  let topRationales: Map<string, string> | null = null;
+  if (top.length > 0 && matchingMode === 'llm-semantic') {
+    topRationales = await generateMatchRationales(
+      req.problem,
+      top.map((r) => ({
+        id: r.vendor.id,
+        name: r.vendor.name,
+        category: r.vendor.category,
+        tagLabels: r.vendor.problemTags.map((t) => TAG_BY_ID[t]?.label ?? t),
+      }))
+    ).catch((err) => {
+      console.error('[runMatch] rationale generation threw unexpectedly:', err);
+      return null;
+    });
+  }
+  const topWithRationale = top.map((r) => ({
+    ...r,
+    matchRationale: topRationales?.get(r.vendor.id) ?? buildFallbackRationale(r.vendor),
+  }));
+
   const alternatives = results
     .filter((r) => !topIds.has(r.vendor.id))
     .filter((r) => r.factors.semanticMatch >= ALTERNATIVE_FLOOR)
@@ -427,7 +471,7 @@ export async function runMatch(req: MatchRequest, selectedTagIds: string[] = [])
       : null;
 
   return {
-    top,
+    top: topWithRationale,
     alternatives,
     stack,
     topSummary: buildTopSummary(top, alternatives, stack, req),

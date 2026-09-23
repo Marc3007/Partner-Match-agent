@@ -12,7 +12,7 @@ const CONSULTANCIES: { key: 'accenture' | 'deloitte' | 'pwc' | 'bain'; label: st
 ];
 
 export function VendorCard({ result, rank, problem }: { result: MatchResult; rank: number; problem: string }) {
-  const { vendor, score, factors, factorAvailability, ecosystemBonusApplied } = result;
+  const { vendor, score, factors, factorAvailability, ecosystemBonusApplied, matchRationale } = result;
   const validated = CONSULTANCIES.filter((c) => vendor.consultingValidation[c.key]);
   const hasMarketContext = vendor.marketShare.valuePct !== null;
 
@@ -37,6 +37,13 @@ export function VendorCard({ result, rank, problem }: { result: MatchResult; ran
         <span className="mt-3 inline-flex w-fit items-center gap-1 rounded-full border border-signal-400/30 bg-signal-400/10 px-2.5 py-1 text-[10px] font-medium text-signal-300">
           <CheckIcon size={11} /> Alliance-validated tier
         </span>
+      )}
+
+      {matchRationale && (
+        <p className="mt-4 text-sm leading-relaxed text-mist-300">
+          <span className="font-semibold text-mist-100">Why this could fit — </span>
+          {matchRationale}
+        </p>
       )}
 
       {ecosystemBonusApplied && vendor.existingStackSynergyNote && (

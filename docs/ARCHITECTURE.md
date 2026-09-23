@@ -267,24 +267,30 @@ a one-time migration tool, not part of the running app.
 scheduled trigger (Claude Code's own "Routine" primitive — a cron-style
 wakeup, not a standalone service) fires periodically into a Claude Code
 session with write access to this repo. On each firing it:
-- reads `data/gap-reports.jsonl` (the persisted backlog written by
-  `POST /api/gap-report` — see that route for why this is a file and not
-  yet a database) for problems that repeatedly found no good category
-  match, and treats those as candidate taxonomy/vendor gaps;
+- reads `data/gap-reports.jsonl` (the persisted backlog -- see `POST
+  /api/gap-report` in `app/api/gap-report/route.ts`, which now commits
+  each real submission directly to this file via the GitHub Contents API
+  when `GITHUB_TOKEN` is configured on Vercel, so this Routine actually
+  sees production traffic and not just whatever hit a local dev server --
+  falls back to local-disk/in-memory otherwise, see README.md) for
+  problems that repeatedly found no good category match, and treats those
+  as candidate taxonomy/vendor gaps;
 - re-researches vendors whose `lastVerified` is stale or whose
   `confidenceScore` was flagged low (currently just v200/Uptake) using the
   same WebSearch-grounded method as the bootstrap;
-- regenerates `lib/vendors.ts` via `gen_vendors.py`, runs
-  `npm run test:matching` and `npx tsc --noEmit`, and commits/pushes only if
-  both pass.
+- edits `lib/vendors.ts` directly for the handful of vendors it touches
+  each run, runs `npm run test:matching` and `npx tsc --noEmit`, and
+  commits/pushes only if both pass.
 
 This Routine is live: `trig_019cxqpWB5RgRRYLUwxfwaNG`, weekly (Mondays
 03:00 UTC), spawning a fresh Claude Code session each run rather than
 resuming a persistent one, so it's resilient to any single session ending.
-Note it currently carries no MCP connector grants, so a fired run has git,
-WebSearch, and normal file tools but not, e.g., GitHub-API MCP tools --
-which is fine, since the job only needs to read/write files in this repo
-and push over git.
+Points at `marc3007/Partner-Match-agent`'s `main` branch (updated when the
+app moved out of the original `galymer_2` repo, whose `main` belongs to an
+unrelated project -- see git history for why). Note it currently carries no
+MCP connector grants, so a fired run has git, WebSearch, and normal file
+tools but not, e.g., GitHub-API MCP tools -- which is fine, since the job
+only needs to read/write files in this repo and push over git.
 
 **This is honestly a different thing from the brief's original design.**
 The brief specifies a standalone deployable service with its own database
