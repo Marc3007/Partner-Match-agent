@@ -1,0 +1,45 @@
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g-crown" x1="60" y1="28" x2="110" y2="70" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="100%" stop-color="#e7e9ee" />
+    </linearGradient>
+    <linearGradient id="g-left" x1="45" y1="36" x2="85" y2="83" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#d5d9e0" />
+      <stop offset="100%" stop-color="#aab1bd" />
+    </linearGradient>
+    <linearGradient id="g-face" x1="110" y1="36" x2="125" y2="83" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#d5d9e0" />
+      <stop offset="100%" stop-color="#9aa2b1" />
+    </linearGradient>
+    <linearGradient id="g-chin" x1="85" y1="70" x2="110" y2="112" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#9aa2b1" />
+      <stop offset="100%" stop-color="#6b7280" />
+    </linearGradient>
+    <linearGradient id="g-shadow" x1="45" y1="83" x2="85" y2="112" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#454c5a" />
+      <stop offset="100%" stop-color="#242932" />
+    </linearGradient>
+    <linearGradient id="g-energy" x1="60" y1="104" x2="100" y2="146" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#3ddc97" />
+      <stop offset="100%" stop-color="#8b7cf6" />
+    </linearGradient>
+    <radialGradient id="g-eye" cx="0.35" cy="0.3" r="0.75">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="45%" stop-color="#6ee7c7" />
+      <stop offset="100%" stop-color="#189a6b" />
+    </radialGradient>
+  </defs>
+  <rect width="200" height="200" rx="40" fill="#08090b" />
+  <polygon fill="url(#g-energy)" points="109.7,104 60.3,104 68,144 100,146" />
+  <polygon fill="url(#g-crown)" points="60.3,36 85,28 109.7,36 85,70" />
+  <polygon fill="url(#g-left)" points="45.1,83 45.1,57 60.3,36 85,70" />
+  <polygon fill="url(#g-face)" points="109.7,36 124.9,57 124.9,83 85,70" />
+  <polygon fill="url(#g-chin)" points="124.9,83 109.7,104 85,112 85,70" />
+  <polygon fill="url(#g-shadow)" points="85,112 60.3,104 45.1,83 85,70" />
+  <polygon points="118,50 150,54 160,66 140,64 122,74" fill="#1c1f26" stroke="#3ddc97" stroke-opacity="0.65" stroke-width="2" stroke-linejoin="round" />
+  <path d="M122,58 144,60" stroke="#3ddc97" stroke-opacity="0.35" stroke-width="1" />
+  <circle cx="105" cy="54" r="6.5" fill="url(#g-eye)" />
+  <circle cx="107.2" cy="51.8" r="1.5" fill="#ffffff" />
+  <path d="M85,28 109.7,36 124.9,57 124.9,83 109.7,104 85,112 60.3,104 45.1,83 45.1,57 60.3,36 Z" fill="none" stroke="#08090b" stroke-opacity="0.45" stroke-width="2" stroke-linejoin="round" />
+</svg>
